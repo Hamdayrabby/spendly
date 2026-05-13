@@ -5,6 +5,7 @@ const morgan = require("morgan");
 const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const env = require("./config/env");
+const authRoutes = require("./modules/auth/auth.routes");
 
 const app = express();
 
@@ -57,10 +58,14 @@ app.get("/api/health", (req, res) => {
 });
 
 // ── Routes ────────────────────────────────────────────
-// Routes will be mounted here as we build them:
-// app.use("/api/auth", authRoutes);
-// app.use("/api/transactions", transactionRoutes);
-// etc.
+// Auth gets a stricter rate limiter — 20 requests per 15 min.
+// This prevents brute-force login attempts.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Too many auth attempts, please try again later." },
+});
+app.use("/api/auth", authLimiter, authRoutes);
 
 // ── 404 Handler ───────────────────────────────────────
 app.use((req, res) => {
