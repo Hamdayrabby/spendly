@@ -9,6 +9,7 @@ const authRoutes = require("./modules/auth/auth.routes");
 const transactionRoutes = require("./modules/transactions/transaction.routes");
 const budgetRoutes = require("./modules/budgets/budget.routes");
 const categoryRoutes = require("./modules/categories/categories.routes");
+const analyticsRoutes = require("./modules/analytics/analytics.routes");
 
 const app = express();
 
@@ -72,6 +73,7 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/categories", categoryRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // ── 404 Handler ───────────────────────────────────────
 app.use((req, res) => {
