@@ -6,6 +6,9 @@ const cookieParser = require("cookie-parser");
 const rateLimit = require("express-rate-limit");
 const env = require("./config/env");
 const authRoutes = require("./modules/auth/auth.routes");
+const transactionRoutes = require("./modules/transactions/transaction.routes");
+const budgetRoutes = require("./modules/budgets/budget.routes");
+const categoryRoutes = require("./modules/categories/categories.routes");
 
 const app = express();
 
@@ -66,6 +69,9 @@ const authLimiter = rateLimit({
   message: { error: "Too many auth attempts, please try again later." },
 });
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/transactions", transactionRoutes);
+app.use("/api/budgets", budgetRoutes);
+app.use("/api/categories", categoryRoutes);
 
 // ── 404 Handler ───────────────────────────────────────
 app.use((req, res) => {
