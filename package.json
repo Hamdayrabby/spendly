@@ -1,0 +1,16 @@
+{
+  "name": "spendly",
+  "version": "1.0.0",
+  "description": "Behavioral finance analytics platform — track spending habits, visualize financial momentum, and gain smart insights.",
+  "private": true,
+  "scripts": {
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "install:server": "npm install --prefix server",
+    "install:client": "npm install --prefix client",
+    "install:all": "npm run install:server && npm run install:client"
+  },
+  "keywords": ["finance", "analytics", "mern", "budgeting"],
+  "author": "Hamdayrabby",
+  "license": "MIT"
+}
