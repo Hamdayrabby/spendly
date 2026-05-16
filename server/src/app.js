@@ -81,7 +81,7 @@ app.use("/api/goals", goalRoutes);
 // ── 404 Handler ───────────────────────────────────────
 // In development, return a JSON error. 
 // In production, the static handler below will catch non-API requests.
-app.use("/api/*", (req, res) => {
+app.use("/api/{*path}", (req, res) => {
   res.status(404).json({ error: `API Route ${req.originalUrl} not found` });
 });
 
@@ -91,7 +91,7 @@ if (env.NODE_ENV === "production") {
   app.use(express.static(clientDistPath));
 
   // Catch-all for React Router SPA (index.html)
-  app.get("*", (req, res) => {
+  app.get("{*path}", (req, res) => {
     res.sendFile(path.join(clientDistPath, "index.html"));
   });
 } else {
