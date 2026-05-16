@@ -1,8 +1,8 @@
 # 💰 Spendly — Personal Finance Dashboard
 
-A full-stack **MERN** application for tracking personal finances. Built to go beyond simple transaction logging — Spendly provides behavioral spending analysis, budget management, savings goal tracking, and downloadable transaction reports in a clean, responsive dark-mode dashboard.
+A full-stack **MERN** application for tracking personal finances. Built to go beyond simple transaction logging — Spendly provides behavioral spending analysis, budget management, savings goal tracking, and beautiful data visualizations.
 
-**Live Demo:** [spendly-production.up.railway.app](https://spendly-production.up.railway.app) _(update with your Railway URL)_
+**Live Demo:** [spendly-live.up.railway.app](https://spendly-live.up.railway.app)
 
 ---
 
@@ -231,11 +231,11 @@ The project is configured for **single-service deployment** on Railway:
 
 ## 📝 Key Technical Decisions
 
-1. **Token Refresh Queue** — When an access token expires, multiple API calls might fail simultaneously. Instead of each triggering a separate refresh, a queue pattern ensures only one refresh call is made while others wait and retry with the new token.
+1. **Token Refresh Queue** — When an access token expires, multiple API calls might fail simultaneously. Instead of each triggering a separate refresh, a queue pattern ensures only one refresh runs per browser session, improving UX and security.
 
-2. **MongoDB Aggregation Pipelines** — Analytics (heatmap, daily spending, category breakdown) are computed server-side using `$group`, `$sort`, and `$project` aggregation stages — not client-side loops.
+2. **MongoDB Aggregation Pipelines** — Analytics (heatmap, daily spending, category breakdown) are computed server-side using `$group`, `$sort`, and `$project` aggregation stages — not client-side, for correctness and performance.
 
-3. **Rule-Based Smart Insights** — The insights engine uses 4 distinct pattern detectors (weekend overspending, category spikes, burn-rate prediction, recurring payments) without any external ML libraries.
+3. **Rule-Based Smart Insights** — The insights engine uses 4 distinct pattern detectors (weekend overspending, category spikes, burn-rate prediction, recurring payments) without any external ML or AI dependencies.
 
 4. **Shared Category Utility** — Categories are defined once in `server/src/utils/categories.js` and served via API. Both client validation and server aggregation reference the same source of truth.
 
@@ -246,3 +246,5 @@ The project is configured for **single-service deployment** on Railway:
 ## 📄 License
 
 MIT — [Hamdayrabby](https://github.com/Hamdayrabby)
+
+
