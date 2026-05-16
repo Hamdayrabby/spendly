@@ -1,6 +1,12 @@
 const Transaction = require("../transactions/transaction.model");
 const Budget = require("../budgets/budget.model");
 const mongoose = require("mongoose");
+const { CORE_CATEGORIES, INCOME_CATEGORIES } = require("../../utils/categories");
+
+// Build a quick lookup: 'food' -> 'Food & Dining'
+const CATEGORY_LABELS = {};
+[...CORE_CATEGORIES, ...INCOME_CATEGORIES].forEach(c => { CATEGORY_LABELS[c.key] = c.label; });
+const getCatLabel = (key) => CATEGORY_LABELS[key] || key;
 
 /**
  * Calculate the Financial Health Score (0-100)
@@ -63,7 +69,7 @@ const calculateHealthScore = async (userId, year, month) => {
   }
 
   // Metric 2: Budget Adherence (30 points)
-  const budgets = await Budget.find({ user: userId, month, year });
+  const budgets = await Budget.find({ user: userObjectId, month, year });
   if (budgets.length > 0) {
     // Get spending for budget categories
     const budgetCategories = budgets.map((b) => b.category);
@@ -174,10 +180,12 @@ const generateInsights = async (userId, year, month) => {
       }
     });
 
-    const weekendAvg = weekendSpend / 2; // Roughly 2 weekend days per week * 4
-    const weekdayAvg = weekdaySpend / 5; // Roughly 5 weekdays per week * 4
+    // Count actual weekend vs weekday transactions to get fair averages
+    const weekendCount = txs.filter(tx => { const d = new Date(tx.date).getDay(); return d === 0 || d === 6; }).length || 1;
+    const weekdayCount = txs.filter(tx => { const d = new Date(tx.date).getDay(); return d > 0 && d < 6; }).length || 1;
+    const weekendAvg = weekendSpend / weekendCount;
+    const weekdayAvg = weekdaySpend / weekdayCount;
     
-    // Very simplified logic, but good enough for a conceptual insight
     if (weekendAvg > weekdayAvg * 1.5) {
       insights.push({
         type: "warning",
@@ -209,7 +217,7 @@ const generateInsights = async (userId, year, month) => {
         insights.push({
           type: "alert",
           title: "Spending Spike",
-          message: `Your ${c._id} expenses have increased by ${Math.round(increase)}% compared to last month.`
+          message: `Your ${getCatLabel(c._id)} spending increased by ${Math.round(increase)}% compared to last month.`
         });
       }
     }
@@ -223,7 +231,7 @@ const generateInsights = async (userId, year, month) => {
     
     // Only predict if we are between day 5 and day 25
     if (currentDay >= 5 && currentDay <= 25) {
-      const budgets = await Budget.find({ user: userId, month, year });
+      const budgets = await Budget.find({ user: userObjectId, month, year });
       
       for (const budget of budgets) {
         const spentObj = currentCatSpend.find(c => c._id === budget.category);
@@ -236,26 +244,99 @@ const generateInsights = async (userId, year, month) => {
           insights.push({
             type: "prediction",
             title: "Budget Risk",
-            message: `At your current rate, you will exceed your ${budget.category} budget by ৳${Math.round(projectedSpend - budget.amount)}.`
+            message: `At your current rate, you will exceed your ${getCatLabel(budget.category)} budget by ৳${Math.round(projectedSpend - budget.amount)}.`
           });
         }
       }
     }
   }
 
-  // 4. Positive reinforcement
-  if (insights.length === 0 && txs.length > 5) {
-     insights.push({
+  // 4. Detect Recurring Expenses
+  // Look at the last 90 days to find transactions with the same category and amount
+  const ninetyDaysAgo = new Date(currentEndDate);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+  const potentialRecurring = await Transaction.aggregate([
+    { 
+      $match: { 
+        user: userObjectId, 
+        type: "expense", 
+        date: { $gte: ninetyDaysAgo, $lte: currentEndDate } 
+      } 
+    },
+    {
+      $group: {
+        _id: { category: "$category", amount: "$amount" },
+        count: { $sum: 1 },
+        lastDate: { $max: "$date" }
+      }
+    },
+    {
+      $match: {
+        count: { $gte: 2 } // Appeared at least twice in 90 days
+      }
+    },
+    { $sort: { lastDate: -1 } },
+    { $limit: 3 }
+  ]);
+
+  if (potentialRecurring.length > 0) {
+    const subs = potentialRecurring.map(p => `${getCatLabel(p._id.category)} (৳${p._id.amount})`).join(', ');
+    insights.push({
+      type: "prediction",
+      title: "Recurring Expenses Detected",
+      message: `We noticed regular payments for: ${subs}. Make sure you still need these subscriptions.`
+    });
+  }
+
+  // 5. Positive reinforcement / Default fallback
+  if (insights.length === 0) {
+    if (txs.length > 0) {
+      insights.push({
         type: "success",
         title: "On Track",
         message: "Your spending patterns look stable and predictable this month. Keep it up!"
       });
+    } else {
+      insights.push({
+        type: "success",
+        title: "Welcome to Spendly!",
+        message: "Add some transactions and set up your budgets to start receiving personalized financial insights."
+      });
+    }
   }
 
   return insights;
 };
 
+/**
+ * Get category-wise spending breakdown
+ */
+const getCategoryBreakdown = async (userId, year, month) => {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  const startDate = new Date(year, month - 1, 1);
+  const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+  return Transaction.aggregate([
+    {
+      $match: {
+        user: userObjectId,
+        type: "expense",
+        date: { $gte: startDate, $lte: endDate },
+      },
+    },
+    {
+      $group: {
+        _id: "$category",
+        value: { $sum: "$amount" },
+      },
+    },
+    { $sort: { value: -1 } },
+  ]);
+};
+
 module.exports = {
   calculateHealthScore,
-  generateInsights
+  generateInsights,
+  getCategoryBreakdown
 };

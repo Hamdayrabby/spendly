@@ -1,4 +1,5 @@
 const express = require("express");
+const path = require("path");
 const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
@@ -10,6 +11,7 @@ const transactionRoutes = require("./modules/transactions/transaction.routes");
 const budgetRoutes = require("./modules/budgets/budget.routes");
 const categoryRoutes = require("./modules/categories/categories.routes");
 const analyticsRoutes = require("./modules/analytics/analytics.routes");
+const goalRoutes = require("./modules/goals/goal.routes");
 
 const app = express();
 
@@ -74,11 +76,30 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/budgets", budgetRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/goals", goalRoutes);
 
 // ── 404 Handler ───────────────────────────────────────
-app.use((req, res) => {
-  res.status(404).json({ error: `Route ${req.originalUrl} not found` });
+// In development, return a JSON error. 
+// In production, the static handler below will catch non-API requests.
+app.use("/api/*", (req, res) => {
+  res.status(404).json({ error: `API Route ${req.originalUrl} not found` });
 });
+
+// ── Production Frontend Serving ────────────────────────
+if (env.NODE_ENV === "production") {
+  const clientDistPath = path.join(__dirname, "../../client/dist");
+  app.use(express.static(clientDistPath));
+
+  // Catch-all for React Router SPA (index.html)
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(clientDistPath, "index.html"));
+  });
+} else {
+  // Simple fallback for dev if they hit a non-existent route
+  app.use((req, res) => {
+    res.status(404).json({ error: `Route ${req.originalUrl} not found` });
+  });
+}
 
 // ── Global Error Handler ──────────────────────────────
 // Express recognizes this as an error handler because it has 4 params.
